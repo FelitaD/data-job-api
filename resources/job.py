@@ -1,7 +1,7 @@
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from data_job_api.models.job import JobModel
+from models.job import JobModel
 
 
 class Job(Resource):

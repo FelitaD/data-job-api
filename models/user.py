@@ -1,29 +1,23 @@
-from data_job_api.db import db
+import pandas as pd
 
-
-# model = helper, internal / resource = external
+from db.db import db
 
 
 class UserModel(db.Model):
+
     __tablename__ = 'users'
 
-    # Map the init and the database
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80))
-    password = db.Column(db.String(80))
+    username = db.Column(db.String(20), primary_key=True)
+    password = db.Column(db.String(40))
+    v1 = db.Column(db.Boolean)
+    v2 = db.Column(db.Boolean)
 
-    def __init__(self, username, password):
+    def __init(self, username, password, v1, v2):
         self.username = username
         self.password = password
-
-    def save_to_db(self):
-        db.session.add(self)
-        db.session.commit()
+        self.v1 = v1
+        self.v2 = v2
 
     @classmethod
     def find_by_username(cls, username):
         return cls.query.filter_by(username=username).first()
-
-    @classmethod
-    def find_by_id(cls, _id):
-        return cls.query.filter_by(id=_id).first()
