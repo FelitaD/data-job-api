@@ -8,13 +8,19 @@ class Recommender(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument('job_id', type=int, required=True, help='Enter the id of a job you like.')
+        self.parser.add_argument('columns', type=str, required=False, help='Enter the columns included in original dataframe.')
+        self.parser.add_argument('feature_columns', type=str, required=False, help='Enter the feature_columns included in the 1st cosine similarity.')
+        self.parser.add_argument('feature_names_weights', type=str, required=False, help='Enter the feature_names_weights included in 2nd the cosine similarity.')
 
         self.data = self.parser.parse_args()
-        self.recommender = RecommenderModel(self.data['job_id'])
+        self.recommender = RecommenderModel(self.data['job_id'],
+                                            self.data['columns'],
+                                            self.data['feature_columns'],
+                                            self.data['feature_names_weights'])
 
     def post(self):
         response = {'job_id': self.data['job_id'],
-                    'similar_jobs': self.recommender.recommend(self.data['job_id'])}
+                    'similar_jobs': self.recommender.recommend().head(1).to_json()}
         return response, 200
 
 

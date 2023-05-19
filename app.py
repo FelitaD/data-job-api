@@ -14,11 +14,11 @@ from db.create_user_db import create_user_db
 app = create_app()
 api = Api(app)
 api.add_resource(Status, '/status')
-api.add_resource(UserRegister, '/register')
+# api.add_resource(UserRegister, '/register')
 api.add_resource(UserLogin, '/login')
-api.add_resource(Job, '/job/<int:id>')
 api.add_resource(JobList, '/jobs')
-api.add_resource(Recommender, '/v1/sentiment')
+api.add_resource(Job, '/job/<int:id>')
+api.add_resource(Recommender, '/recommender')
 
 
 @app.before_first_request

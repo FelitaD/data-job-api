@@ -4,6 +4,11 @@ from flask_jwt_extended import jwt_required
 from models.job import JobModel
 
 
+_parser = reqparse.RequestParser()
+_parser.add_argument('username', type=str, required=True, help="This field cannot be blank")
+_parser.add_argument('password', type=str, required=True, help="This field cannot be blank")
+
+
 class Job(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('company',

@@ -41,16 +41,24 @@ class RecommenderModel:
         self.feature_names = None
         self.original_df = self.preprocess()
 
-    def recommend(self, job_id):
-        sim = self.compute_similarity()  # Returns similarity series
+    def recommend(self):
+        # Add a column <job_id>_similarity Series
+        sim = self.compute_similarity()
+        # Merge series with original dataframe
         original_df = self.original_df.merge(sim, left_index=True, right_index=True)
-        df = original_df.compute_mean_similarities(original_df, job_id)
-        return df.sort_values(by='mean_similarity', ascending=False)
+        return original_df.sort_values(by=f'similarity_{self.job_id}', ascending=False)
+
+        # Compute the mean of multiple <job_id>_similarity columns
+        # df = self.compute_mean_similarities(original_df, job_ids)
+        # return original_df.sort_values(by='mean_similarity', ascending=False)
 
     def compute_similarity(self):
         """Returns a Series of similarities for a given job."""
+        # For one job id, computes the similarity of each given features separately
         res = self.compute_all_similarities(self.original_df, self.feature_columns, self.job_id)
+        # Multiple each features with a personalised weight
         df = self.compute_weighted_similarity(res, self.feature_names_weights)
+        # Returns normalised column with for given job_id
         return self.normalise_computed_weighted_similarity(df)
 
     def preprocess(self):
@@ -129,7 +137,7 @@ class RecommenderModel:
     def compute_all_similarities(self, df, feature_columns, job_id):
         # Create base DataFrame indicating job_id that similarity is computed for
         individual_similarity = self.compute_individual_similarity(df=df, job_id=job_id,
-                                                                   feature_column=self.feature_columns[0],
+                                                                   feature_column=self.feature_columns[0],  # first column just to initiate the function
                                                                    feature_name='')
         individual_similarities = pd.DataFrame(index=individual_similarity.index)
         individual_similarities['job_id'] = job_id
@@ -163,6 +171,7 @@ class RecommenderModel:
 
     def compute_mean_similarities(self, df, job_ids):
         sim_columns = [f'similarity_{job_id}' for job_id in job_ids]
+        sim_columns = f'similarity_{job_ids[0]}'
         df['mean_similarity'] = df[sim_columns].mean(axis=1)
         return df
 
