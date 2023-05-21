@@ -13,12 +13,12 @@ PWD = os.getenv('JOB_MARKET_DB_PWD')
 
 class RecommenderModel:
     """
-    Internal representation of the Job resource and helper.
+    Internal representation of the Recommender resource and helper.
     Client doesn't interact directly with these methods.
     """
 
-    def __init__(self, job_id, columns=None, feature_columns=None, feature_names_weights=None):
-        self.job_id = job_id
+    def __init__(self, job_ids, columns=None, feature_columns=None, feature_names_weights=None):
+        self.job_ids = job_ids
         if columns is None:
             self.columns = ['id', 'title', 'company', 'remote', 'location', 'stack', 'text', 'experience', 'size']
         else:
@@ -42,24 +42,30 @@ class RecommenderModel:
         self.original_df = self.preprocess()
 
     def recommend(self):
-        # Add a column <job_id>_similarity Series
-        sim = self.compute_similarity()
-        # Merge series with original dataframe
-        original_df = self.original_df.merge(sim, left_index=True, right_index=True)
-        return original_df.sort_values(by=f'similarity_{self.job_id}', ascending=False)
+        if len(self.job_ids) > 1:
+            for job_id in self.job_ids:
+                # Get similarity_<job_id> Series
+                similarity = self.compute_similarity(job_id)
+                # Merge series with original dataframe
+                original_df = self.original_df.merge(similarity, left_index=True, right_index=True)
+                # Compute the mean of multiple <job_id>_similarity columns
+                df = self.compute_mean_similarities(original_df)
+                return df.sort_values(by='mean_similarity', ascending=False)
+        else:
+            # Add a column similarity_<job_id> Series
+            sim = self.compute_similarity(self.job_ids[0])
+            # Merge series with original dataframe
+            original_df = self.original_df.merge(sim, left_index=True, right_index=True)
+            return original_df.sort_values(by=f'similarity_{self.job_ids[0]}', ascending=False)
 
-        # Compute the mean of multiple <job_id>_similarity columns
-        # df = self.compute_mean_similarities(original_df, job_ids)
-        # return original_df.sort_values(by='mean_similarity', ascending=False)
-
-    def compute_similarity(self):
+    def compute_similarity(self, job_id):
         """Returns a Series of similarities for a given job."""
         # For one job id, computes the similarity of each given features separately
-        res = self.compute_all_similarities(self.original_df, self.feature_columns, self.job_id)
+        res = self.compute_all_similarities(self.original_df, self.feature_columns, job_id)
         # Multiple each features with a personalised weight
         df = self.compute_weighted_similarity(res, self.feature_names_weights)
         # Returns normalised column with for given job_id
-        return self.normalise_computed_weighted_similarity(df)
+        return self.normalise_computed_weighted_similarity(df, job_id)
 
     def preprocess(self):
         df = self.extract_data(self.columns)
@@ -137,7 +143,8 @@ class RecommenderModel:
     def compute_all_similarities(self, df, feature_columns, job_id):
         # Create base DataFrame indicating job_id that similarity is computed for
         individual_similarity = self.compute_individual_similarity(df=df, job_id=job_id,
-                                                                   feature_column=self.feature_columns[0],  # first column just to initiate the function
+                                                                   feature_column=self.feature_columns[0],
+                                                                   # first column just to initiate the function
                                                                    feature_name='')
         individual_similarities = pd.DataFrame(index=individual_similarity.index)
         individual_similarities['job_id'] = job_id
@@ -163,15 +170,14 @@ class RecommenderModel:
         res['weighted_similarity'] = weighted.apply(np.sum, axis=1)
         return res.sort_values(by='weighted_similarity', ascending=False)
 
-    def normalise_computed_weighted_similarity(self, weighted_df):
+    def normalise_computed_weighted_similarity(self, weighted_df, job_id):
         top = (weighted_df['weighted_similarity'] - min(weighted_df['weighted_similarity']))
         bot = (max(weighted_df['weighted_similarity']) - min(weighted_df['weighted_similarity']))
-        weighted_df[f'similarity_{self.job_id}'] = top / bot
-        return weighted_df[f'similarity_{self.job_id}']
+        weighted_df[f'similarity_{job_id}'] = top / bot
+        return weighted_df[f'similarity_{job_id}']
 
-    def compute_mean_similarities(self, df, job_ids):
-        sim_columns = [f'similarity_{job_id}' for job_id in job_ids]
-        sim_columns = f'similarity_{job_ids[0]}'
+    def compute_mean_similarities(self, df):
+        sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
         df['mean_similarity'] = df[sim_columns].mean(axis=1)
         return df
 
