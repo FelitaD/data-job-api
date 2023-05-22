@@ -10,7 +10,6 @@ from resources.job import Job, JobList
 from resources.recommender import Recommender
 from db.create_user_db import create_user_db
 
-
 app = create_app()
 api = Api(app)
 api.add_resource(Status, '/status')
@@ -40,6 +39,14 @@ def about():
 def jobs():
     jobs = JobList().get().get('jobs')
     return render_template('jobs.html', jobs=jobs)
+
+
+@app.route('/recommend/')
+def recommend():
+    recommendations = Recommender().get()[0].get('recommendations')
+    print(recommendations)
+    print(type(recommendations))
+    return render_template('recommend.html', recommendations=recommendations)
 
 
 if __name__ == '__main__':

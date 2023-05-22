@@ -17,16 +17,27 @@ class RecommenderModel:
     Client doesn't interact directly with these methods.
     """
 
-    def __init__(self, job_ids, columns=None, feature_columns=None, feature_names_weights=None):
-        self.job_ids = job_ids
+    def __init__(self, job_ids=None, columns=None, feature_columns=None, feature_names_weights=None):
+        if job_ids is None:
+            self.job_ids = [333, 444, 555]
+        else:
+            self.job_ids = job_ids
+
+        self.sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
+
         if columns is None:
-            self.columns = ['id', 'title', 'company', 'remote', 'location', 'stack', 'text', 'experience', 'size']
+            self.columns = ['id', 'title', 'company', 'remote', 'location', 'stack', 'text', 'experience', 'size', 'url']
         else:
             self.columns = columns
+
+        self.res_columns = self.columns + self.sim_columns
+        self.res_columns += ['mean_similarity']
+
         if feature_columns is None:
             self.feature_columns = ['remote', 'title', 'stack', 'text', 'experience', 'size']
         else:
             self.feature_columns = feature_columns
+
         if feature_names_weights is None:
             self.feature_names_weights = {
                 'remote_similarity': 1,
@@ -42,29 +53,23 @@ class RecommenderModel:
         self.original_df = self.preprocess()
 
     def recommend(self):
-        if len(self.job_ids) > 1:
-            for job_id in self.job_ids:
-                # Get similarity_<job_id> Series
-                similarity = self.compute_similarity(job_id)
-                # Merge series with original dataframe
-                original_df = self.original_df.merge(similarity, left_index=True, right_index=True)
-                # Compute the mean of multiple <job_id>_similarity columns
-                df = self.compute_mean_similarities(original_df)
-                return df.sort_values(by='mean_similarity', ascending=False)
-        else:
-            # Add a column similarity_<job_id> Series
-            sim = self.compute_similarity(self.job_ids[0])
+        # if len(self.job_ids) > 1:
+        for job_id in self.job_ids:
+            # Get similarity_<job_id> Series
+            similarity = self.compute_similarity(job_id)
             # Merge series with original dataframe
-            original_df = self.original_df.merge(sim, left_index=True, right_index=True)
-            return original_df.sort_values(by=f'similarity_{self.job_ids[0]}', ascending=False)
+            self.original_df = self.original_df.merge(similarity, left_index=True, right_index=True)
+        # Compute the mean of multiple <job_id>_similarity columns
+        self.original_df = self.compute_mean_similarities(self.original_df)
+        self.original_df.sort_values(by='mean_similarity', ascending=False, inplace=True)
 
     def compute_similarity(self, job_id):
         """Returns a Series of similarities for a given job."""
         # For one job id, computes the similarity of each given features separately
         res = self.compute_all_similarities(self.original_df, self.feature_columns, job_id)
-        # Multiple each features with a personalised weight
+        # Multiple each features with personalised weight
         df = self.compute_weighted_similarity(res, self.feature_names_weights)
-        # Returns normalised column with for given job_id
+        # Returns normalised column for given job_id
         return self.normalise_computed_weighted_similarity(df, job_id)
 
     def preprocess(self):
@@ -80,7 +85,6 @@ class RecommenderModel:
         relevant = relevant[
             ['id', 'title', 'company', 'remote', 'location', 'stack', 'education', 'size', 'experience', 'rank', 'url',
              'industry', 'type', 'created_at', 'text', 'summary']]
-        # print(relevant.info())
 
         user_df = relevant[['id']]
         item_df = relevant[columns]
@@ -99,30 +103,25 @@ class RecommenderModel:
     def combine_features(self, row, feature_column):
         new_row = ''
         if feature_column == 'stack':  # a list of words
-            # print('list of words\n')
             for w in row['stack']:
                 new_row = new_row + ' ' + w
                 return new_row
         elif feature_column == 'title' or feature_column == 'experience' or feature_column == 'size':
-            # print('title\n')
             return row[feature_column]
         elif feature_column == 'text':
             for w in [w for w in row['text'].split(' ')]:
                 new_row = new_row + ' ' + w
                 return new_row
         elif re.search(' +', row[feature_column]):  # multiple words
-            # print('multiple words\n')
             for i in range(len(row[feature_column])):
                 new_row = new_row + ' ' + str(row[feature_column[i]])
             return new_row
         elif not re.search(' +', row[feature_column]):  # only one word
-            # print(f'one word: {row[feature_column]}\n')
             return row[feature_column]
 
     def extract_features(self, df):
         cv = CountVectorizer()
         count_matrix = cv.fit_transform(df["combined_features"])
-        # print(count_matrix.shape)
         return count_matrix
 
     def compute_individual_similarity(self, df, job_id, feature_column, feature_name):
@@ -177,27 +176,46 @@ class RecommenderModel:
         return weighted_df[f'similarity_{job_id}']
 
     def compute_mean_similarities(self, df):
-        sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
-        df['mean_similarity'] = df[sim_columns].mean(axis=1)
+        df['mean_similarity'] = df[self.sim_columns].mean(axis=1)
         return df
 
     def get_id_from_index(self, df, index):
         return df[df.index == index]["id"].values[0]
 
+    def format_json(self):
+        # for i in range(len(self.sim_columns)):
+        #     print(f'{self.sim_columns[i]}')
+
+        return {
+            'id': self.original_df['id'],
+            'title': self.original_df['title'],
+            'company': self.original_df['company'],
+            'remote': self.original_df['remote'],
+            'location': self.original_df['location'],
+            'stack': self.original_df['stack'],
+            # 'text': self.original_df['text'],
+            'experience': self.original_df['experience'],
+            'size': self.original_df['size'],
+            'mean_similarity': self.original_df['mean_similarity']
+        }
+
 
 def main():
-    job_ids = [333, 444, 555]
-    base_recommender = RecommenderModel(job_id=job_ids[0])
-    original_df = base_recommender.original_df
-    for job_id in job_ids:
-        recommender = RecommenderModel(job_id=job_id)
-        sim = recommender.compute_similarity()  # Adds column similarity
-        original_df = original_df.merge(sim, left_index=True, right_index=True)
-    df = base_recommender.compute_mean_similarities(original_df, job_ids)
+    # job_ids = [333, 444, 555]
+    rec = RecommenderModel()
+    rec.recommend()
+    json = rec.format_json()
+    print(json)
+    # original_df = base_recommender.original_df
+    # for job_id in job_ids:
+    #     recommender = RecommenderModel(job_id=job_id)
+    #     sim = recommender.compute_similarity()  # Adds column similarity
+    #     original_df = original_df.merge(sim, left_index=True, right_index=True)
+    # df = base_recommender.compute_mean_similarities(original_df, job_ids)
     # df = df.sort_values(by='mean_similarity', ascending=False)  # Will shuffle index
-    print(df)
-    print(df.iloc[333])
-    print(base_recommender.get_id_from_index(df, 333))
+    # print(df)
+    # print(df.iloc[333])
+    # print(base_recommender.get_id_from_index(df, 333))
 
 
 if __name__ == '__main__':
