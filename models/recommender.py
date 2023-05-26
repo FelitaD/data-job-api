@@ -22,10 +22,7 @@ class RecommenderModel:
         if job_ids is None:
             self.job_ids = [555, 444]
         else:
-            print(job_ids)
-            print(type(job_ids[0]))
-            self.job_ids = [int(job_id) for job_id in job_ids]
-            print(type(self.job_ids[0]))
+            self.job_ids = [int(job_id) for job_id in job_ids.split()]
         self.sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
 
         if columns is None:
@@ -136,8 +133,6 @@ class RecommenderModel:
         cosine_sim = cosine_similarity(count_matrix)
 
         # Get similar jobs for one job_id
-        print(f'JOB ID: {job_id}')
-        print(f'TYPE JOB ID: {type(job_id)}')
         similar_jobs = list(enumerate(cosine_sim[job_id]))
 
         # Keep similarity scores in a Series

@@ -7,7 +7,7 @@ from models.recommender import RecommenderModel
 class Recommender(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('job_id', action='append', required=False, location='form',
+        self.parser.add_argument('job_id', required=False, location='form',
                                  help='Enter one or multiple ids of jobs you like.')
         self.parser.add_argument('columns', type=str, required=False,
                                  help='Enter the columns included in original dataframe.')
