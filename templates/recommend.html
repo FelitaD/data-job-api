@@ -1,4 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-{{ recommendations|safe }}
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{% block title %} Add a Job Id {% endblock %}</h1>
+    <form method="post">
+        <label for="id">Id</label>
+        <br>
+        <input type="text" name="job_id"
+               placeholder="Job id"
+               value="{{ request.form['job_id'] }}"></input>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+    <div>
+    {{ recommendations|safe }}
+    </div>
+{% endblock %}
 </html>

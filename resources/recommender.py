@@ -7,8 +7,8 @@ from models.recommender import RecommenderModel
 class Recommender(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('job_ids', type=list, required=False, location='json',
-                                 help='Enter the one or multiple ids of jobs you like.')
+        self.parser.add_argument('job_id', action='append', required=False, location='form',
+                                 help='Enter one or multiple ids of jobs you like.')
         self.parser.add_argument('columns', type=str, required=False,
                                  help='Enter the columns included in original dataframe.')
         self.parser.add_argument('feature_columns', type=str, required=False,
@@ -16,7 +16,7 @@ class Recommender(Resource):
         self.parser.add_argument('feature_names_weights', type=str, required=False,
                                  help='Enter the feature_names_weights included in 2nd the cosine similarity.')
         self.data = self.parser.parse_args()
-        self.recommender = RecommenderModel(self.data['job_ids'],
+        self.recommender = RecommenderModel(self.data['job_id'],
                                             self.data['columns'],
                                             self.data['feature_columns'],
                                             self.data['feature_names_weights'])
@@ -31,6 +31,5 @@ class Recommender(Resource):
 
     def get(self):
         # TODO: to html
-        response = {'recommendations': self.recommender.original_df[['id', 'title', 'company', 'stack', 'remote', 'url']].head(100).to_html()}
-        # print(response.get('recommendations'))
+        response = {'recommendations': self.recommender.original_df[['id', 'title', 'company', 'stack', 'remote', 'url', 'mean_similarity']].head(100).to_html()}
         return response, 200

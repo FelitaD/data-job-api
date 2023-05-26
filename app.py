@@ -1,5 +1,5 @@
 import flask
-from flask import render_template
+from flask import render_template, request, url_for, flash, redirect
 from flask_restful import Api
 from datetime import datetime
 
@@ -26,7 +26,7 @@ def register_users():
 
 
 @app.route("/")
-def hello():
+def index():
     return render_template('index.html', now=datetime.now())
 
 
@@ -41,12 +41,18 @@ def jobs():
     return render_template('jobs.html', jobs=jobs)
 
 
-@app.route('/recommend/')
+@app.route('/recommend/', methods=('GET', 'POST'))
 def recommend():
-    recommendations = Recommender().get()[0].get('recommendations')
-    print(recommendations)
-    print(type(recommendations))
-    return render_template('recommend.html', recommendations=recommendations)
+    # # Flash message
+    if request.method == 'POST':
+    #     job_id = request.form['job_id']
+        #
+        # if not job_id:
+        #     flash('job_id is required!')
+        # Rendering
+        recommendations = Recommender().get()[0].get('recommendations')
+        return render_template('recommend.html', recommendations=recommendations)
+    return render_template('recommend.html')
 
 
 if __name__ == '__main__':

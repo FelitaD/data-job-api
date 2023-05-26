@@ -1,3 +1,4 @@
+import ast
 import os
 import re
 import json
@@ -19,10 +20,12 @@ class RecommenderModel:
 
     def __init__(self, job_ids=None, columns=None, feature_columns=None, feature_names_weights=None):
         if job_ids is None:
-            self.job_ids = [333, 444, 555]
+            self.job_ids = [555, 444]
         else:
-            self.job_ids = job_ids
-
+            print(job_ids)
+            print(type(job_ids[0]))
+            self.job_ids = [int(job_id) for job_id in job_ids]
+            print(type(self.job_ids[0]))
         self.sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
 
         if columns is None:
@@ -83,7 +86,7 @@ class RecommenderModel:
         query = 'SELECT * FROM relevant;'
         relevant = pd.read_sql_query(query, engine)
         relevant = relevant[
-            ['id', 'title', 'company', 'remote', 'location', 'stack', 'education', 'size', 'experience', 'rank', 'url',
+            ['id', 'title', 'company', 'remote', 'location', 'stack', 'education', 'size', 'experience', 'url',
              'industry', 'type', 'created_at', 'text', 'summary']]
 
         user_df = relevant[['id']]
@@ -133,6 +136,8 @@ class RecommenderModel:
         cosine_sim = cosine_similarity(count_matrix)
 
         # Get similar jobs for one job_id
+        print(f'JOB ID: {job_id}')
+        print(f'TYPE JOB ID: {type(job_id)}')
         similar_jobs = list(enumerate(cosine_sim[job_id]))
 
         # Keep similarity scores in a Series
@@ -205,7 +210,6 @@ def main():
     rec = RecommenderModel()
     rec.recommend()
     json = rec.format_json()
-    print(json)
     # original_df = base_recommender.original_df
     # for job_id in job_ids:
     #     recommender = RecommenderModel(job_id=job_id)
