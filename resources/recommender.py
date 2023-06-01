@@ -23,7 +23,6 @@ class Recommender(Resource):
         self.recommender.recommend()
         self.similar_jobs_json = self.recommender.format_json()
 
-    @jwt_required()
     def post(self):
         # TODO: to json
         response = {'similar_jobs': self.similar_jobs_json}

@@ -18,7 +18,7 @@ class RecommenderModel:
     Client doesn't interact directly with these methods.
     """
 
-    def __init__(self, job_ids=None, columns=None, feature_columns=None, feature_names_weights=None):
+    def __init__(self, job_ids=None, columns=None, feature_columns=None, feature_weights=None):
         if job_ids is None:
             self.job_ids = [555, 444]
         else:
@@ -26,7 +26,7 @@ class RecommenderModel:
         self.sim_columns = [f'similarity_{job_id}' for job_id in self.job_ids]
 
         if columns is None:
-            self.columns = ['id', 'title', 'company', 'remote', 'location', 'stack', 'text', 'experience', 'size', 'url']
+            self.columns = ['id', 'title', 'company', 'remote', 'location', 'stack', 'text', 'experience', 'url']
         else:
             self.columns = columns
 
@@ -34,21 +34,20 @@ class RecommenderModel:
         self.res_columns += ['mean_similarity']
 
         if feature_columns is None:
-            self.feature_columns = ['remote', 'title', 'stack', 'text', 'experience', 'size']
+            self.feature_columns = ['remote', 'title', 'stack', 'text', 'experience']
         else:
             self.feature_columns = feature_columns
 
-        if feature_names_weights is None:
-            self.feature_names_weights = {
+        if feature_weights is None:
+            self.feature_weights = {
                 'remote_similarity': 1,
                 'title_similarity': 0.8,
                 'stack_similarity': 0.8,
                 'text_similarity': 0.7,
                 'experience_similarity': 0.6,
-                'size_similarity': 0.5
             }
         else:
-            self.feature_names_weights = feature_names_weights
+            self.feature_weights = feature_weights
         self.feature_names = None
         self.original_df = self.preprocess()
 
@@ -68,7 +67,7 @@ class RecommenderModel:
         # For one job id, computes the similarity of each given features separately
         res = self.compute_all_similarities(self.original_df, self.feature_columns, job_id)
         # Multiple each features with personalised weight
-        df = self.compute_weighted_similarity(res, self.feature_names_weights)
+        df = self.compute_weighted_similarity(res, self.feature_weights)
         # Returns normalised column for given job_id
         return self.normalise_computed_weighted_similarity(df, job_id)
 
@@ -101,6 +100,7 @@ class RecommenderModel:
         # return [w for w in row['stack']] # ast literal eval
 
     def combine_features(self, row, feature_column):
+        # 'remote', 'title', 'stack', 'text', 'experience', 'size'
         new_row = ''
         if feature_column == 'stack':  # a list of words
             for w in row['stack']:
@@ -163,8 +163,8 @@ class RecommenderModel:
 
         return df.merge(individual_similarities, left_index=True, right_index=True)
 
-    def compute_weighted_similarity(self, res, feature_names_weights):
-        weights = list(feature_names_weights.values())
+    def compute_weighted_similarity(self, res, feature_weights):
+        weights = list(feature_weights.values())
         weighted = res[self.feature_names].apply(lambda x: x * weights, axis=1)
         res['weighted_similarity'] = weighted.apply(np.sum, axis=1)
         return res.sort_values(by='weighted_similarity', ascending=False)
@@ -195,7 +195,7 @@ class RecommenderModel:
             'stack': self.original_df['stack'],
             # 'text': self.original_df['text'],
             'experience': self.original_df['experience'],
-            'size': self.original_df['size'],
+            # 'size': self.original_df['size'],
             'mean_similarity': self.original_df['mean_similarity']
         }
 

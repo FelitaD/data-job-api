@@ -45,8 +45,7 @@ def jobs():
 def recommend():
     # # Flash message
     if request.method == 'POST':
-    #     job_id = request.form['job_id']
-        #
+        job_id = request.form['job_id']
         # if not job_id:
         #     flash('job_id is required!')
         # Rendering
